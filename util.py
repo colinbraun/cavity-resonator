@@ -202,7 +202,11 @@ class TetrahedralElement:
             # Iterate over each column, computing the cofactor determinant of the row + column combination
             for col in range(4):
                 # Compute the cofactor (remove the proper row and column and compute the determinant)
-                cofactors[col] = np.linalg.det(np.delete(np.delete(np.append(self.points, np.ones([4, 1]), 1), row, axis=0), col, axis=1))
+                if (row + col) % 2 == 0:
+                    negate = 1
+                else:
+                    negate = -1
+                cofactors[col] = negate * np.linalg.det(np.delete(np.delete(np.append(np.ones([4, 1]), self.points, 1), row, axis=0), col, axis=1))
             all_cofactors[row] = cofactors
         self.simplex_consts = all_cofactors
 
@@ -380,15 +384,6 @@ def load_mesh(filename):
     boundary_pec_triangles, boundary_pec_edges = construct_triangles_from_surface(boundary_pec_elements, all_edges_map)
     boundary_pec_edge_numbers = set(all_edges_map[edge] for edge in boundary_pec_edges)
     # Load the InputPort triangle elements
-    boundary_input_elements = load_mesh_block(filename, "InputPort")
-    # boundary_input_edges = [Edge(element[0], element[1]) for element in boundary_input_elements]
-    boundary_input_triangles, boundary_input_edges = construct_triangles_from_surface(boundary_input_elements, all_edges_map)
-    boundary_input_edge_numbers = set(all_edges_map[edge] for edge in boundary_input_edges)
-    # Load the OutputPort triangle elements
-    boundary_output_elements = load_mesh_block(filename, "OutputPort")
-    # boundary_output_edges = [Edge(element[0], element[1]) for element in boundary_output_elements]
-    boundary_output_triangles, boundary_output_edges = construct_triangles_from_surface(boundary_output_elements, all_edges_map)
-    boundary_output_edge_numbers = set(all_edges_map[edge] for edge in boundary_output_edges)
 
     # Get the set of non-boundary global edge numbers
     # inner_edge_numbers = set(np.arange(0, len(all_edges))) - boundary_pec_edge_numbers - boundary_input_edge_numbers - boundary_output_edge_numbers
@@ -405,13 +400,9 @@ def load_mesh(filename):
     # tets_node_ids: A list containing lists of length 4 containing the 4 global node numbers that make up the tets.
     # all_edges: A list of all the global edge numbers that make up the entire geometry
     # boundary_pec_edge_numbers: A set of all the global edge numbers that lie on the PEC wall of the geometry
-    # boundary_input_edge_numbers: A set of all the global edge numbers that lie on the InputPort wall of the geometry
-    # boundary_output_edge_numbers: A set of all the global edge numbers that lie on the OutputPort wall of the geometry
     # remap_inner_edge_nums: A map that takes one of the inner edge numbers and maps it to a unique integer between [0, number of inner edges]
     # all_edges_map: A map from an Edge object to its global edge number
-    # boundary_input_triangles: A numpy array of TriangleElement objects that make up the input port
-    # boundary_output_triangles: A numpy array of TriangleElement objects that make up the output port
-    return all_nodes, all_tets, tets_node_ids, all_edges, boundary_pec_edge_numbers, boundary_input_edge_numbers, boundary_output_edge_numbers, remap_edge_nums, all_edges_map, boundary_input_triangles, boundary_output_triangles
+    return all_nodes, all_tets, tets_node_ids, all_edges, boundary_pec_edge_numbers, remap_edge_nums, all_edges_map
 
 
 def area(x1, y1, x2, y2, x3, y3):

@@ -2,8 +2,9 @@
 import time
 # alternatively, import cupy as np if len(points)>1e7 and GPU
 import numpy as np
-from iwaveguide.waveguide import Waveguide
+# from iwaveguide.waveguide import Waveguide
 from util import quad_eval, quad_sample_points
+from util import TetrahedralElement
 
 
 def foo(x, y, z):
@@ -77,7 +78,7 @@ def point_inside(point, tetra, origin):
     return np.all(newp>=0, axis=-1) & np.all(newp <=1, axis=-1) & (np.sum(newp, axis=-1) <=1)
 
 
-npt=10000000
+npt=100
 points = np.random.rand(npt, 3)
 # Coordinates of vertices A, B, C and D
 A=np.array([0.1, 0.1, 0.1])
@@ -85,12 +86,12 @@ B=np.array([0.9, 0.2, 0.1])
 C=np.array([0.1, 0.9, 0.1])
 D=np.array([0.3, 0.3, 0.9])
 # A point that is inside the above tet:
-pts = np.array([[0.2, 0.2, 0.09], [0.2, 0.2, 0.11]])
+pts = np.array([[0.2, 0.2, 0.09], [0.2, 0.2, 0.15]])
 
 start_time = time.time()
 vertices = [A, B, C, D]
 tetra, origin = Tetrahedron(vertices)
-inTet = point_inside(points, tetra, origin)
+inTet = point_inside(pts, tetra, origin)
 print("--- %s seconds ---" % (time.time() - start_time))
 # print(point_inside(pt, tetra, origin))
 
@@ -121,3 +122,40 @@ def where(node_coordinates, node_ids, p):
 all_nodes = np.array(vertices)
 node_ids_test = np.array([[0, 1, 2, 3]])
 output = where(all_nodes, node_ids_test, pts)
+
+
+# Test the barycentric constants are working properly
+
+# Compute the simplex (barycentric) constants for the nodes of this TetrahedralElement
+# Each row is for a node. Each column is for a, b, c, and d (in order) from NASA paper eq. 162
+# These are stored in the same order as self.nodes (i.e. simplex_consts[0] are the constants for self.nodes[0])
+all_cofactors = np.zeros([4, 4])
+points = np.array([A, B, C, D])
+# Iterate over each row
+negate = 1
+for row in range(4):
+    cofactors = np.zeros([4])
+    # Iterate over each column, computing the cofactor determinant of the row + column combination
+    for col in range(4):
+        # Compute the cofactor (remove the proper row and column and compute the determinant)
+        if (row + col) % 2 == 0:
+            negate = 1
+        else:
+            negate = -1
+        cofactors[col] = negate * np.linalg.det(np.delete(np.delete(np.append(np.ones([4, 1]), points, 1), row, axis=0), col, axis=1))
+    all_cofactors[row] = cofactors
+simplex_consts = all_cofactors
+
+full_mat = np.append(np.ones([4, 1]), points, 1)
+volume = abs(1/6 * np.linalg.det(full_mat))
+# This point lies in the tetrahedron, test it
+test_point = [0.2, 0.2, 0.15]
+full_mat[0, 1:] = test_point
+v1 = abs(1/6 * np.linalg.det(full_mat))
+
+for i in range(4):
+    alpha1 = (simplex_consts[i, 0] + simplex_consts[i, 1]*test_point[0] + simplex_consts[i, 2]*test_point[1] + simplex_consts[i, 3]*test_point[2]) / 6 / volume
+    print(alpha1)
+
+print("actual alpha1:")
+print(v1/volume)
