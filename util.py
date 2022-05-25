@@ -221,7 +221,7 @@ class TetrahedralElement:
         x_component = 0
         y_component = 0
         z_component = 0
-        for edge_no in self.edges:
+        for i, edge_no in enumerate(self.edges):
             edge = TriangleElement.all_edges[edge_no]
             indices_l = [np.argwhere(self.nodes == edge.node1)[0][0], np.argwhere(self.nodes == edge.node2)[0][0]]
             # The simplex coordinates for nodes i and j of edge l
@@ -229,16 +229,18 @@ class TetrahedralElement:
             a_il, a_jl = self.simplex_consts[indices_l]
             Axl = a_il[0]*a_jl[1] - a_il[1]*a_jl[0]
             Bxl = a_il[2]*a_jl[1] - a_il[1]*a_jl[2]
-            Cxl = a_il[3]*a_jl[2] - a_il[2]*a_jl[3]
+            # Cxl = a_il[3]*a_jl[2] - a_il[2]*a_jl[3]
+            # Change from a_jl[2] to a_jl[1], a_il[2] to a_il[1]
+            Cxl = a_il[3] * a_jl[1] - a_il[1] * a_jl[3]
             Ayl = a_il[0]*a_jl[2] - a_il[2]*a_jl[0]
             Byl = a_il[1]*a_jl[2] - a_il[2]*a_jl[1]
             Cyl = a_il[3]*a_jl[2] - a_il[2]*a_jl[3]
             Azl = a_il[0]*a_jl[3] - a_il[3]*a_jl[0]
             Bzl = a_il[1]*a_jl[3] - a_il[3]*a_jl[1]
             Czl = a_il[2]*a_jl[3] - a_il[3]*a_jl[2]
-            x_component += edge.length / 36 / self.volume**2 * (Axl + Bxl*p[1] + Cxl*p[2])
-            y_component += edge.length / 36 / self.volume**2 * (Ayl + Byl*p[0] + Cyl*p[2])
-            z_component += edge.length / 36 / self.volume**2 * (Azl + Bzl*p[0] + Czl*p[1])
+            x_component += phis[i] * edge.length / 36 / self.volume**2 * (Axl + Bxl*p[1] + Cxl*p[2])
+            y_component += phis[i] * edge.length / 36 / self.volume**2 * (Ayl + Byl*p[0] + Cyl*p[2])
+            z_component += phis[i] * edge.length / 36 / self.volume**2 * (Azl + Bzl*p[0] + Czl*p[1])
         return x_component, y_component, z_component
 
 

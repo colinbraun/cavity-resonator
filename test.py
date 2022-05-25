@@ -2,9 +2,8 @@
 import time
 # alternatively, import cupy as np if len(points)>1e7 and GPU
 import numpy as np
-# from iwaveguide.waveguide import Waveguide
 from util import quad_eval, quad_sample_points
-from util import TetrahedralElement
+import math
 
 
 def foo(x, y, z):
@@ -159,3 +158,7 @@ for i in range(4):
 
 print("actual alpha1:")
 print(v1/volume)
+
+a, b, d = 1, 0.5, 0.75
+m, n, p = 1, 0, 1
+k0 = math.sqrt((m*math.pi/a)**2 + (n*math.pi/b)**2 + (p*math.pi/d)**2)

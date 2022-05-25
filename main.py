@@ -20,7 +20,7 @@ S = np.zeros([len(remap_edge_nums), len(remap_edge_nums)])
 T = np.zeros([len(remap_edge_nums), len(remap_edge_nums)])
 
 print("Begin constructing equation matrix")
-# Iterate over the tetrahedrons and construct the K and b matrices (this concept comes from Jin page 454)
+# Iterate over the tetrahedrons and construct the S and T matrices (this concept comes from Jin page 454)
 for tet in tetrahedrons:
 
     # Compute the x-mean, y-mean, and z-mean of the points that make up the tetrahedron (needed later)
@@ -44,7 +44,8 @@ for tet in tetrahedrons:
         a_il, a_jl = tet.simplex_consts[indices_l]
         Axl = a_il[0]*a_jl[1] - a_il[1]*a_jl[0]
         Bxl = a_il[2]*a_jl[1] - a_il[1]*a_jl[2]
-        Cxl = a_il[3]*a_jl[2] - a_il[2]*a_jl[3]
+        # Change from a_jl[2] to a_jl[1], a_il[2] to a_il[1]
+        Cxl = a_il[3]*a_jl[1] - a_il[1]*a_jl[3]
         Ayl = a_il[0]*a_jl[2] - a_il[2]*a_jl[0]
         Byl = a_il[1]*a_jl[2] - a_il[2]*a_jl[1]
         Cyl = a_il[3]*a_jl[2] - a_il[2]*a_jl[3]
@@ -67,7 +68,9 @@ for tet in tetrahedrons:
             # Necessary constants from NASA paper eqs. 163-172
             Axk = a_ik[0] * a_jk[1] - a_ik[1] * a_jk[0]
             Bxk = a_ik[2] * a_jk[1] - a_ik[1] * a_jk[2]
-            Cxk = a_ik[3] * a_jk[2] - a_ik[2] * a_jk[3]
+            # Cxk = a_ik[3] * a_jk[2] - a_ik[2] * a_jk[3]
+            # Change from a_jk[2] to a_jk[1], a_ik[2] to a_ik[1]
+            Cxk = a_ik[3] * a_jk[1] - a_ik[1] * a_jk[3]
             Ayk = a_ik[0] * a_jk[2] - a_ik[2] * a_jk[0]
             Byk = a_ik[1] * a_jk[2] - a_ik[2] * a_jk[1]
             Cyk = a_ik[3] * a_jk[2] - a_ik[2] * a_jk[3]
@@ -129,7 +132,7 @@ y_points = np.linspace(y_min, y_max, num_y_points)
 num_z_points = 1
 # z_points = np.linspace(z_min, z_max, num_z_points)
 # For now, just get the fields at z_min
-z_points = np.array([z_min])
+z_points = np.array([z_min + 0.3])
 Ex = np.zeros([num_x_points, num_y_points, num_z_points])
 Ey = np.zeros([num_x_points, num_y_points, num_z_points])
 Ez = np.zeros([num_x_points, num_y_points, num_z_points])
@@ -145,12 +148,12 @@ for i in range(num_z_points):
             field_points[k + j*num_y_points + i*num_z_points] = np.array([pt_x, pt_y, pt_z])
 
 tet_indices = where(all_nodes, tets_node_ids, field_points)
+first = np.where(k0s >= 0.1)[0][0]
 
 # Compute the field at each of the points
 for i, tet_index in enumerate(tet_indices):
     tet = tetrahedrons[tet_index]
-    phis = [eigenvectors[remap_edge_nums[edge]] if edge in remap_edge_nums else 0 for edge in tet.edges]
-    ex, ey, ez = tet.interpolate(phis, field_points[i])
+    phis = [eigenvectors[first, remap_edge_nums[edge]] if edge in remap_edge_nums else 0 for edge in tet.edges]
     z_i = math.floor(i / (num_x_points * num_y_points)) % num_z_points
     y_i = math.floor(i / num_x_points) % num_y_points
     x_i = i % num_x_points
