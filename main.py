@@ -6,6 +6,7 @@ import math
 from scipy.linalg import eig
 from scipy import sparse
 from scipy.sparse.linalg import eigs
+import time
 
 
 # Turn on interactive plotting
@@ -13,13 +14,15 @@ plt.ion()
 # print(load_mesh_block("rectangular_waveguide_3d.inp", "ALLNODES"))
 # print(load_mesh_block("rectangular_waveguide_3d.inp", "InputPort"))
 print("Loading data from mesh")
+start_time = time.time()
 all_nodes, tetrahedrons, tets_node_ids, all_edges, boundary_pec_edge_numbers, remap_edge_nums, all_edges_map, = load_mesh("rectangular_waveguide_3d_less_coarse_pec.inp")
-print("Finished loading data from mesh")
+print(f"Finished loading data from mesh in {time.time() - start_time} seconds")
 # Initialize the K and b matrices
 S = np.zeros([len(remap_edge_nums), len(remap_edge_nums)])
 T = np.zeros([len(remap_edge_nums), len(remap_edge_nums)])
 
 print("Begin constructing equation matrix")
+start_time = time.time()
 # Iterate over the tetrahedrons and construct the S and T matrices (this concept comes from Jin page 454)
 for tet in tetrahedrons:
 
@@ -98,12 +101,13 @@ for tet in tetrahedrons:
             dot_part = tet.permittivity * edge1.length * edge2.length / 1296 / tet.volume**3 * i_sum
             T[remap_edge_nums[all_edges_map[edge1]], remap_edge_nums[all_edges_map[edge2]]] += dot_part
 
-print("Finished constructing equation matrix")
+print(f"Finished constructing equation matrix in {time.time() - start_time} seconds")
 print("Solving eigenvalue problem")
+start_time = time.time()
 sS = sparse.csr_matrix(S)
 sT = sparse.csr_matrix(T)
-# eigenvalues, eigenvectors = eigs(sS, k=sS.shape[0]-1, M=sT)
-eigenvalues, eigenvectors = eig(S, T, right=True)
+eigenvalues, eigenvectors = eigs(sS, k=sS.shape[0]-2, M=sT, which='SR')
+# eigenvalues, eigenvectors = eig(S, T, right=True)
 # Take the transpose such that each row of the matrix now corresponds to an eigenvector (helpful for sorting)
 eigenvectors = eigenvectors.transpose()
 # Prepare to sort the eigenvalues and eigenvectors by propagation constant
@@ -114,9 +118,10 @@ eigenvectors = np.real(eigenvectors[p])
 # Find the first positive propagation constant
 first_pos = np.argwhere(eigenvalues >= 0)[0, 0]
 k0s, eigenvectors = np.sqrt(eigenvalues[first_pos:]), eigenvectors[first_pos:]
-print("Finished solving eigenvalue problem")
+print(f"Finished solving eigenvalue problem in {time.time() - start_time} seconds")
 # ----------------------GET FIELDS--------------------------
 print("Calculating field data")
+start_time = time.time()
 # Compute the bounds of the waveguide
 x_min = np.amin(all_nodes[:, 0])
 x_max = np.amax(all_nodes[:, 0])
@@ -132,7 +137,7 @@ y_points = np.linspace(y_min, y_max, num_y_points)
 num_z_points = 1
 # z_points = np.linspace(z_min, z_max, num_z_points)
 # For now, just get the fields at z_min
-z_points = np.array([z_min + 0.3])
+z_points = np.array([z_min+0.1])
 Ex = np.zeros([num_x_points, num_y_points, num_z_points])
 Ey = np.zeros([num_x_points, num_y_points, num_z_points])
 Ez = np.zeros([num_x_points, num_y_points, num_z_points])
@@ -150,17 +155,20 @@ for i in range(num_z_points):
 tet_indices = where(all_nodes, tets_node_ids, field_points)
 first = np.where(k0s >= 0.1)[0][0]
 
+# The mode of interest, in increasing k0 value (4/5 -> TM111/TE111)
+mode = 4
+
 # Compute the field at each of the points
 for i, tet_index in enumerate(tet_indices):
     tet = tetrahedrons[tet_index]
-    phis = [eigenvectors[first, remap_edge_nums[edge]] if edge in remap_edge_nums else 0 for edge in tet.edges]
+    phis = [eigenvectors[first + mode, remap_edge_nums[edge]] if edge in remap_edge_nums else 0 for edge in tet.edges]
     z_i = math.floor(i / (num_x_points * num_y_points)) % num_z_points
     y_i = math.floor(i / num_x_points) % num_y_points
     x_i = i % num_x_points
     # Note the indexing here is done with y_i first and x_i second. If we consider a grid being indexed, the first
     # index corresponds to the row (vertical control), hence y_i first and x_i second
     Ex[y_i, x_i, z_i], Ey[y_i, x_i, z_i], Ez[y_i, x_i, z_i] = tet.interpolate(phis, field_points[i])
-print("Finished calculating field data")
+print(f"Finished calculating field data in {time.time() - start_time} seconds")
 
 plt.figure()
 color_image = plt.imshow(Ez[:, :, 0], extent=[x_min, x_max, y_min, y_max], cmap="cividis")
