@@ -317,7 +317,7 @@ def load_mesh_block(filename, block_name):
         return data
 
 
-def load_mesh(filename):
+def load_mesh(filename, tet_name="Tetrahedrons", pec_walls_name="PECWalls"):
     """
     Load a mesh from a file. Must have at least 2 blocks, one containing all surface element_to_node_conn, the other the edge ones.
     :param filename: The name of the mesh file (a .inp a.k.a. abaqus file) to load
@@ -328,7 +328,7 @@ def load_mesh(filename):
     # Make the nodes accessible globally (TODO: Do this differently?)
     TriangleElement.all_nodes = all_nodes
     # Load the tetrahedrons
-    element_to_node_conn = load_mesh_block(filename, "Tetrahedrons")
+    element_to_node_conn = load_mesh_block(filename, tet_name)
     # All the edges (the index is the global edge number, i.e. all_edges[0] gets edge w/ global edge number 0)
     all_edges = []
     TriangleElement.all_edges = all_edges
@@ -381,7 +381,7 @@ def load_mesh(filename):
     TriangleElement.all_edges = all_edges
 
     # Load the PEC Wall triangle elements
-    boundary_pec_elements = load_mesh_block(filename, "PECWalls")
+    boundary_pec_elements = load_mesh_block(filename, pec_walls_name)
     # boundary_pec_edges = [Edge(element[0], element[1]) for element in boundary_pec_elements]
     boundary_pec_triangles, boundary_pec_edges = construct_triangles_from_surface(boundary_pec_elements, all_edges_map)
     boundary_pec_edge_numbers = set(all_edges_map[edge] for edge in boundary_pec_edges)

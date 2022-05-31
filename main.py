@@ -16,6 +16,8 @@ plt.ion()
 print("Loading data from mesh")
 start_time = time.time()
 all_nodes, tetrahedrons, tets_node_ids, all_edges, boundary_pec_edge_numbers, remap_edge_nums, all_edges_map, = load_mesh("rectangular_waveguide_3d_less_coarse_pec.inp")
+# all_nodes, tetrahedrons, tets_node_ids, all_edges, boundary_pec_edge_numbers, remap_edge_nums, all_edges_map, = load_mesh("rectangular_waveguide_3d_fine_pec.inp", pec_walls_name="EB2")
+# all_nodes, tetrahedrons, tets_node_ids, all_edges, boundary_pec_edge_numbers, remap_edge_nums, all_edges_map, = load_mesh("test_somewhat_fine_mesh.inp")
 print(f"Finished loading data from mesh in {time.time() - start_time} seconds")
 # Initialize the K and b matrices
 S = np.zeros([len(remap_edge_nums), len(remap_edge_nums)])
@@ -135,12 +137,12 @@ x_points = np.linspace(x_min, x_max, num_x_points)
 num_y_points = 100
 y_points = np.linspace(y_min, y_max, num_y_points)
 num_z_points = 1
-# z_points = np.linspace(z_min, z_max, num_z_points)
+z_points = np.linspace(z_min+(0.75-0.1), z_max, num_z_points)
 # For now, just get the fields at z_min
-z_points = np.array([z_min+0.1])
-Ex = np.zeros([num_x_points, num_y_points, num_z_points])
-Ey = np.zeros([num_x_points, num_y_points, num_z_points])
-Ez = np.zeros([num_x_points, num_y_points, num_z_points])
+# z_points = np.array([z_min+0.2])
+Ex = np.zeros([num_y_points, num_x_points, num_z_points])
+Ey = np.zeros([num_y_points, num_x_points, num_z_points])
+Ez = np.zeros([num_y_points, num_x_points, num_z_points])
 
 field_points = np.zeros([num_x_points * num_y_points * num_z_points, 3])
 # Iterate over the points
@@ -151,6 +153,7 @@ for i in range(num_z_points):
         for k in range(num_x_points):
             pt_x = x_points[k]
             field_points[k + j*num_y_points + i*num_z_points] = np.array([pt_x, pt_y, pt_z])
+            # field_points[k + j*num_x_points + i*num_y_points*num_x_points] = np.array([pt_x, pt_y, pt_z])
 
 tet_indices = where(all_nodes, tets_node_ids, field_points)
 first = np.where(k0s >= 0.1)[0][0]
@@ -172,8 +175,16 @@ print(f"Finished calculating field data in {time.time() - start_time} seconds")
 
 plt.figure()
 color_image = plt.imshow(Ez[:, :, 0], extent=[x_min, x_max, y_min, y_max], cmap="cividis")
+# color_image = plt.imshow(Ex[0, :, :], extent=[y_min, y_max, z_min, z_max], cmap="cividis")
 plt.colorbar(label="Ez")
 X, Y = np.meshgrid(x_points, y_points)
+# Y, Z = np.meshgrid(y_points, z_points)
 skip = (slice(None, None, 5), slice(None, None, 5))
 field_skip = (slice(None, None, 5), slice(None, None, 5), 0)
+# field_skip = (0, slice(None, None, 5), slice(None, None, 5))
 plt.quiver(X[skip], Y[skip], Ex[field_skip], Ey[field_skip], color="black")
+
+# Try a 3d quiver plot:
+# ax = plt.figure().add_subplot(projection='3d')
+# x, y, z = np.meshgrid(x_points, y_points, z_points)
+# ax.quiver(x, y, z, Ex, Ey, Ez, length=0.05, normalize=True)
