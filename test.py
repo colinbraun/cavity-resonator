@@ -2,8 +2,9 @@
 import time
 # alternatively, import cupy as np if len(points)>1e7 and GPU
 import numpy as np
-from util import quad_eval, quad_sample_points
+from util import quad_eval, quad_sample_points, TetrahedralElement, TriangleElement, Edge
 import math
+import matplotlib.pyplot as plt
 
 
 def foo(x, y, z):
@@ -162,3 +163,69 @@ print(v1/volume)
 a, b, d = 1, 0.5, 0.75
 m, n, p = 1, 0, 1
 k0 = math.sqrt((m*math.pi/a)**2 + (n*math.pi/b)**2 + (p*math.pi/d)**2)
+
+nodes = np.array([0, 1, 2, 3])
+edges = np.array([0, 1, 2, 3, 4, 5])
+TriangleElement.all_nodes = np.array([A, B, C, D])
+edge1 = Edge(0, 1)
+edge2 = Edge(0, 2)
+edge3 = Edge(0, 3)
+edge4 = Edge(1, 2)
+edge5 = Edge(1, 3)
+edge6 = Edge(2, 3)
+TriangleElement.all_edges = np.array([edge1, edge2, edge3, edge4, edge5, edge6])
+tet = TetrahedralElement(edges)
+tets_node_ids = np.array([tet.nodes])
+
+x_min = np.amin(TriangleElement.all_nodes[:, 0])
+x_max = np.amax(TriangleElement.all_nodes[:, 0])
+y_min = np.amin(TriangleElement.all_nodes[:, 1])
+y_max = np.amax(TriangleElement.all_nodes[:, 1])
+z_min = np.amin(TriangleElement.all_nodes[:, 2])
+z_max = np.amax(TriangleElement.all_nodes[:, 2])
+# Create a cuboid grid of points that the geometry is inscribed in
+num_x_points = 10
+num_y_points = 10
+num_z_points = 10
+x_points = np.linspace(x_min, x_max, num_x_points)
+y_points = np.linspace(y_min, y_max, num_y_points)
+z_points = np.linspace(z_min, z_max, num_z_points)
+Ex = np.zeros([num_x_points, num_y_points, num_z_points])
+Ey = np.zeros([num_x_points, num_y_points, num_z_points])
+Ez = np.zeros([num_x_points, num_y_points, num_z_points])
+
+field_points = np.zeros([num_x_points * num_y_points * num_z_points, 3])
+# Iterate over the points
+for i in range(num_z_points):
+    pt_z = z_points[i]
+    for j in range(num_y_points):
+        pt_y = y_points[j]
+        for k in range(num_x_points):
+            pt_x = x_points[k]
+            # Old version, almost certainly wrong
+            # field_points[k + j * num_y_points + i * num_z_points] = np.array([pt_x, pt_y, pt_z])
+            # New version
+            field_points[k + j * num_x_points + i * num_x_points * num_y_points] = np.array([pt_x, pt_y, pt_z])
+
+tet_indices = where(TriangleElement.all_nodes, tets_node_ids, field_points)
+
+# Compute the field at each of the points
+for i, tet_index in enumerate(tet_indices):
+    phis = [1, 0, 0, 0, 0, 0] if tet_index == 0 else [0, 0, 0, 0, 0, 0]
+    ex, ey, ez = tet.interpolate(phis, field_points[i])
+    z_i = math.floor(i / (num_x_points * num_y_points)) % num_z_points
+    y_i = math.floor(i / num_x_points) % num_y_points
+    x_i = i % num_x_points
+    # Note the indexing here is done with y_i first and x_i second. If we consider a grid being indexed,
+    # the first index corresponds to the row (vertical control), hence y_i first and x_i second
+    Ex[y_i, x_i, z_i], Ey[y_i, x_i, z_i], Ez[y_i, x_i, z_i] = tet.interpolate(phis, field_points[i])
+
+# Try a 3d quiver plot:
+ax = plt.figure().add_subplot(projection='3d')
+for edge in [edge1, edge2, edge3, edge4, edge5, edge6]:
+    x_vals = [TriangleElement.all_nodes[edge.node1][0], TriangleElement.all_nodes[edge.node2][0]]
+    y_vals = [TriangleElement.all_nodes[edge.node1][1], TriangleElement.all_nodes[edge.node2][1]]
+    z_vals = [TriangleElement.all_nodes[edge.node1][2], TriangleElement.all_nodes[edge.node2][2]]
+    ax.plot3D(x_vals, y_vals, z_vals)
+x, y, z = np.meshgrid(x_points, y_points, z_points)
+ax.quiver(x, y, z, Ex, Ey, Ez, length=0.05, normalize=True)
