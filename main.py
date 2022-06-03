@@ -35,7 +35,7 @@ class Cavity:
     def solve(self):
         """
         Solve the cavity.
-        :return: Nothing.
+        :return: The sorted, positive k0s and the corresponding eigenvectors.
         """
         print("Begin constructing equation matrix")
         start_time = time.time()
@@ -137,6 +137,7 @@ class Cavity:
         first_pos = np.argwhere(eigenvalues >= 0)[0, 0]
         self.k0s, self.eigenvectors = np.sqrt(eigenvalues[first_pos:]), eigenvectors[first_pos:]
         print(f"Finished solving eigenvalue problem in {time.time() - start_time} seconds")
+        return self.k0s, self.eigenvectors
 
     def plot_fields(self, mode, num_x_points=100, num_y_points=100, num_z_points=1, plane="xy", offset=0.1):
         """
@@ -146,20 +147,22 @@ class Cavity:
         :param num_x_points: The number of x points to compute the fields for.
         :param num_y_points: The number of y points to compute the fields for.
         :param num_z_points: The number of z points to compute the fields for.
-        :param plane: One of {"xy", "xz", "yz"} to select which plane to take a cut of. Currently a W.I.P.
+        :param plane: One of {"xy", "xz", "yz"} to select which plane to take a cut of.
         :param offset: The offset from the edge of the geometry in the direction perpendicular to the plane to calc at.
         :return: The figure containing all the field data (the result of running plt.figure()).
         """
         print("Calculating field data")
-        start_time = time.time()
         # Compute the bounds of the waveguide
         # Create a cuboid grid of points that the geometry is inscribed in
-        x_points = np.linspace(self.x_min, self.x_max, num_x_points)
-        y_points = np.linspace(self.y_min, self.y_max, num_y_points)
-        z_points = np.linspace(self.z_min+offset, self.z_max, num_z_points)
-        Ex = np.zeros([num_x_points, num_y_points, num_z_points])
-        Ey = np.zeros([num_x_points, num_y_points, num_z_points])
-        Ez = np.zeros([num_x_points, num_y_points, num_z_points])
+        offset_x = offset if plane.upper() == "YZ" else 0
+        offset_y = offset if plane.upper() == "XZ" else 0
+        offset_z = offset if plane.upper() == "XY" else 0
+        x_points = np.linspace(self.x_min+offset_x, self.x_max, num_x_points)
+        y_points = np.linspace(self.y_min+offset_y, self.y_max, num_y_points)
+        z_points = np.linspace(self.z_min+offset_z, self.z_max, num_z_points)
+        Ex = np.zeros([num_z_points, num_y_points, num_x_points])
+        Ey = np.zeros([num_z_points, num_y_points, num_x_points])
+        Ez = np.zeros([num_z_points, num_y_points, num_x_points])
 
         field_points = np.zeros([num_x_points * num_y_points * num_z_points, 3])
         # Iterate over the points
@@ -172,33 +175,54 @@ class Cavity:
                     field_points[k + j*num_x_points + i*num_x_points*num_y_points] = np.array([pt_x, pt_y, pt_z])
 
         tet_indices = where(self.all_nodes, self.tets_node_ids, field_points)
-
         first_mode = np.where(self.k0s >= 0.1)[0][0]
+
         # Compute the field at each of the points
         for i, tet_index in enumerate(tet_indices):
             tet = self.tetrahedrons[tet_index]
             phis = [self.eigenvectors[first_mode+mode, self.remap_edge_nums[edge]] if edge in self.remap_edge_nums else 0 for edge in tet.edges]
-            ex, ey, ez = tet.interpolate(phis, field_points[i])
             z_i = floor(i / (num_x_points * num_y_points)) % num_z_points
             y_i = floor(i / num_x_points) % num_y_points
             x_i = i % num_x_points
-            # Note the indexing here is done with y_i first and x_i second. If we consider a grid being indexed,
-            # the first index corresponds to the row (vertical control), hence y_i first and x_i second
-            Ex[y_i, x_i, z_i], Ey[y_i, x_i, z_i], Ez[y_i, x_i, z_i] = tet.interpolate(phis, field_points[i])
-        print(f"Finished calculating field data in {time.time() - start_time} seconds")
+            # Note the indexing here is done with z_i first, y_i second, and x_i third. If we consider a 2D grid being
+            # indexed, the first index corresponds to the row (vertical control), hence y_i second and x_i third.
+            # Same idea applies to having z_i first.
+            Ex[z_i, y_i, x_i], Ey[z_i, y_i, x_i], Ez[z_i, y_i, x_i] = tet.interpolate(phis, field_points[i])
+
+        print("Finished calculating field data")
 
         fig = plt.figure()
-        plt.imshow(Ez[:, :, 0], extent=[self.x_min, self.x_max, self.y_min, self.y_max], cmap="cividis")
-        plt.colorbar(label="Ez")
-        X, Y = np.meshgrid(x_points, y_points)
-        skip = (slice(None, None, 5), slice(None, None, 5))
-        field_skip = (slice(None, None, 5), slice(None, None, 5), 0)
-        plt.quiver(X[skip], Y[skip], Ex[field_skip], Ey[field_skip], color="black")
+        if plane.upper() == "YZ":
+            axis1, axis2 = np.meshgrid(y_points, z_points)
+            skip = (slice(None, None, 5), slice(None, None, 5))
+            field_skip = (slice(None, None, 5), slice(None, None, 5), 0)
+            plt.imshow(Ex[:, :, 0], extent=[self.y_min, self.y_max, self.z_min, self.z_max], cmap="cividis")
+            plt.colorbar(label="Ex")
+            plt.quiver(axis1[skip], axis2[skip], Ey[field_skip], Ez[field_skip], color="black")
+        elif plane.upper() == "XZ":
+            axis1, axis2 = np.meshgrid(x_points, z_points)
+            skip = (slice(None, None, 5), slice(None, None, 5))
+            field_skip = (slice(None, None, 5), 0, slice(None, None, 5))
+            plt.imshow(Ey[:, 0, :], extent=[self.x_min, self.x_max, self.z_min, self.z_max], cmap="cividis")
+            plt.colorbar(label="Ey")
+            plt.quiver(axis1[skip], axis2[skip], Ex[field_skip], Ez[field_skip], color="black")
+        elif plane.upper() == "XY":
+            axis1, axis2 = np.meshgrid(x_points, y_points)
+            skip = (slice(None, None, 5), slice(None, None, 5))
+            field_skip = (0, slice(None, None, 5), slice(None, None, 5))
+            plt.imshow(Ez[0, :, :], extent=[self.x_min, self.x_max, self.y_min, self.y_max], cmap="cividis")
+            plt.colorbar(label="Ez")
+            plt.quiver(axis1[skip], axis2[skip], Ex[field_skip], Ey[field_skip], color="black")
+        else:
+            raise RuntimeError(f"Invalid argument for plane '{plane}'. Must be one of 'xy', 'xz', or 'yz'.")
         return fig
 
 
 cavity = Cavity("rectangular_waveguide_3d_less_coarse_pec.inp")
 cavity.solve()
-cavity.plot_fields(5)
+cavity.plot_fields(5, 1, 100, 100, "yz")
 # for z in np.linspace(cavity.z_min, cavity.z_max, 20):
     # cavity.plot_fields(5, offset=z-cavity.z_min)
+for x in np.linspace(cavity.x_min, cavity.x_max, 20):
+    # cavity.plot_fields(5, offset=z-cavity.z_min)
+    cavity.plot_fields(4, 1, 100, 100, "yz", offset=x-cavity.x_min)
