@@ -2,3 +2,5 @@ __pycache__/
 venv/
 .idea/workspace.xml
 iwaveguide/
+images/
+gifs/

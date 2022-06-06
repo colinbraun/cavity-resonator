@@ -190,9 +190,9 @@ num_z_points = 10
 x_points = np.linspace(x_min, x_max, num_x_points)
 y_points = np.linspace(y_min, y_max, num_y_points)
 z_points = np.linspace(z_min, z_max, num_z_points)
-Ex = np.zeros([num_x_points, num_y_points, num_z_points])
-Ey = np.zeros([num_x_points, num_y_points, num_z_points])
-Ez = np.zeros([num_x_points, num_y_points, num_z_points])
+Ex = np.zeros([num_y_points, num_x_points, num_z_points])
+Ey = np.zeros([num_y_points, num_x_points, num_z_points])
+Ez = np.zeros([num_y_points, num_x_points, num_z_points])
 
 field_points = np.zeros([num_x_points * num_y_points * num_z_points, 3])
 # Iterate over the points
@@ -227,5 +227,6 @@ for edge in [edge1, edge2, edge3, edge4, edge5, edge6]:
     y_vals = [TriangleElement.all_nodes[edge.node1][1], TriangleElement.all_nodes[edge.node2][1]]
     z_vals = [TriangleElement.all_nodes[edge.node1][2], TriangleElement.all_nodes[edge.node2][2]]
     ax.plot3D(x_vals, y_vals, z_vals)
-x, y, z = np.meshgrid(x_points, y_points, z_points)
+x, y, z = np.meshgrid(x_points, y_points, z_points, indexing='xy')
 ax.quiver(x, y, z, Ex, Ey, Ez, length=0.05, normalize=True)
+# x, y = np.meshgrid(x_points, y_points)

@@ -229,8 +229,6 @@ class TetrahedralElement:
             a_il, a_jl = self.simplex_consts[indices_l]
             Axl = a_il[0]*a_jl[1] - a_il[1]*a_jl[0]
             Bxl = a_il[2]*a_jl[1] - a_il[1]*a_jl[2]
-            # Cxl = a_il[3]*a_jl[2] - a_il[2]*a_jl[3]
-            # Change from a_jl[2] to a_jl[1], a_il[2] to a_il[1]
             Cxl = a_il[3] * a_jl[1] - a_il[1] * a_jl[3]
             Ayl = a_il[0]*a_jl[2] - a_il[2]*a_jl[0]
             Byl = a_il[1]*a_jl[2] - a_il[2]*a_jl[1]
@@ -402,7 +400,7 @@ def load_mesh(filename, tet_name="Tetrahedrons", pec_walls_name="PECWalls"):
     # tets_node_ids: A list containing lists of length 4 containing the 4 global node numbers that make up the tets.
     # all_edges: A list of all the global edge numbers that make up the entire geometry
     # boundary_pec_edge_numbers: A set of all the global edge numbers that lie on the PEC wall of the geometry
-    # remap_inner_edge_nums: A map that takes one of the inner edge numbers and maps it to a unique integer between [0, number of inner edges]
+    # remap_edge_nums: A map that takes one of the inner edge numbers and maps it to a unique integer between [0, number of inner edges]
     # all_edges_map: A map from an Edge object to its global edge number
     return all_nodes, all_tets, tets_node_ids, all_edges, boundary_pec_edge_numbers, remap_edge_nums, all_edges_map
 

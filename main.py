@@ -56,16 +56,15 @@ class Cavity:
                     continue
                 # Get a hold of the Edge object
                 edge1 = self.all_edges[edgei]
-                # Get the nodes that make up this edge
-                node_il, node_jl = self.all_nodes[edge1.node1], self.all_nodes[edge1.node2]
 
+                # Determine which indices in the tet.nodes field this edge corresponds to
                 indices_l = [np.argwhere(tet.nodes == edge1.node1)[0][0], np.argwhere(tet.nodes == edge1.node2)[0][0]]
-                # The simplex constants for nodes i and j of edge l
                 # Necessary constants from NASA paper eqs. 163-172
+                # Fetch the simplex constants corresponding to this edge (see TetrahedralElement constructor)
+                # (NASA paper eq 163)
                 a_il, a_jl = tet.simplex_consts[indices_l]
                 Axl = a_il[0]*a_jl[1] - a_il[1]*a_jl[0]
                 Bxl = a_il[2]*a_jl[1] - a_il[1]*a_jl[2]
-                # Change from a_jl[2] to a_jl[1], a_il[2] to a_il[1]
                 Cxl = a_il[3]*a_jl[1] - a_il[1]*a_jl[3]
                 Ayl = a_il[0]*a_jl[2] - a_il[2]*a_jl[0]
                 Byl = a_il[1]*a_jl[2] - a_il[2]*a_jl[1]
@@ -80,7 +79,6 @@ class Cavity:
                     if edgej in self.boundary_pec_edge_numbers:
                         continue
                     edge2 = self.all_edges[edgej]
-                    node_ik, node_jk = self.all_nodes[edge1.node1], self.all_nodes[edge1.node2]
 
                     # Find the indices of the edge of interest
                     indices_k = [np.argwhere(tet.nodes == edge2.node1)[0][0], np.argwhere(tet.nodes == edge2.node2)[0][0]]
@@ -89,8 +87,6 @@ class Cavity:
                     # Necessary constants from NASA paper eqs. 163-172
                     Axk = a_ik[0] * a_jk[1] - a_ik[1] * a_jk[0]
                     Bxk = a_ik[2] * a_jk[1] - a_ik[1] * a_jk[2]
-                    # Cxk = a_ik[3] * a_jk[2] - a_ik[2] * a_jk[3]
-                    # Change from a_jk[2] to a_jk[1], a_ik[2] to a_ik[1]
                     Cxk = a_ik[3] * a_jk[1] - a_ik[1] * a_jk[3]
                     Ayk = a_ik[0] * a_jk[2] - a_ik[2] * a_jk[0]
                     Byk = a_ik[1] * a_jk[2] - a_ik[2] * a_jk[1]
@@ -174,7 +170,9 @@ class Cavity:
                     pt_x = x_points[k]
                     field_points[k + j*num_x_points + i*num_x_points*num_y_points] = np.array([pt_x, pt_y, pt_z])
 
+        # Find which tetrahedron each point lies in
         tet_indices = where(self.all_nodes, self.tets_node_ids, field_points)
+        # Find the first propagating mode
         first_mode = np.where(self.k0s >= 0.1)[0][0]
 
         # Compute the field at each of the points
@@ -192,6 +190,7 @@ class Cavity:
         print("Finished calculating field data")
 
         fig = plt.figure()
+        plt.title(f"Fields in {plane.upper()}-plane, offset = {round(offset, 3)}")
         if plane.upper() == "YZ":
             axis1, axis2 = np.meshgrid(y_points, z_points)
             skip = (slice(None, None, 5), slice(None, None, 5))
@@ -218,11 +217,40 @@ class Cavity:
         return fig
 
 
-cavity = Cavity("rectangular_waveguide_3d_less_coarse_pec.inp")
+def save_fields(cavity, mode, plane="xy", cuts=20, folder_path="./"):
+    """
+    Save the fields for a cavity to the specified path.
+    :param cavity: The Cavity object to save the fields of.
+    :param mode: The mode to save the fields of.
+    :param plane: The plane to save fields of.
+    :param cuts: The number of cuts in the plane to save fields of.
+    :param folder_path: The folder to save the images in.
+    :return: Nothing.
+    """
+    if plane.upper() == "XY":
+        min, max = cavity.z_min, cavity.z_max
+        num_x, num_y, num_z = 100, 100, 1
+    elif plane.upper() == "XZ":
+        min, max = cavity.y_min, cavity.y_max
+        num_x, num_y, num_z = 100, 1, 100
+    elif plane.upper() == "YZ":
+        min, max = cavity.x_min, cavity.x_max
+        num_x, num_y, num_z = 1, 100, 100
+    else:
+        return
+
+    for i, d in enumerate(np.linspace(min, max, cuts)):
+        offset = d - min
+        cavity.plot_fields(mode, num_x, num_y, num_z, plane, offset=offset)
+        plt.savefig(f"{folder_path}/mode{mode}_plane{plane}_{floor(i / 10)}{i % 10}.png")
+        plt.close()
+
+
+# cavity = Cavity("rectangular_waveguide_3d_less_coarse_pec.inp")
+cavity = Cavity("rectangular_waveguide_3d_even_less_coarse.inp")
 cavity.solve()
-cavity.plot_fields(5, 1, 100, 100, "yz")
-# for z in np.linspace(cavity.z_min, cavity.z_max, 20):
-    # cavity.plot_fields(5, offset=z-cavity.z_min)
-for x in np.linspace(cavity.x_min, cavity.x_max, 20):
-    # cavity.plot_fields(5, offset=z-cavity.z_min)
-    cavity.plot_fields(4, 1, 100, 100, "yz", offset=x-cavity.x_min)
+mode = 4
+plane = "xz"
+# cavity.plot_fields(mode)
+save_fields(cavity, 5, "xy", 20, "images/fine_mesh/xy")
+save_fields(cavity, 5, "xz", 20, "images/fine_mesh/xz")
