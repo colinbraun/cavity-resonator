@@ -120,7 +120,7 @@ class Cavity:
         start_time = time.time()
         sS = sparse.csr_matrix(S)
         sT = sparse.csr_matrix(T)
-        eigenvalues, eigenvectors = eigs(sS, k=50, M=sT, which='SR')
+        eigenvalues, eigenvectors = eigs(sS, k=100, M=sT, which='SR')
         # eigenvalues, eigenvectors = eig(S, T, right=True)
         # Take the transpose such that each row of the matrix now corresponds to an eigenvector (helpful for sorting)
         eigenvectors = eigenvectors.transpose()
@@ -135,14 +135,13 @@ class Cavity:
         print(f"Finished solving eigenvalue problem in {time.time() - start_time} seconds")
         return self.k0s, self.eigenvectors
 
-    def plot_fields(self, mode, num_x_points=100, num_y_points=100, num_z_points=1, plane="xy", offset=0.1):
+    def plot_fields(self, mode, num_axis1_points=100, num_axis2_points=100, plane="xy", offset=0.1):
         """
         Plot the fields in the selected plane. Note that field plotting is expensive due to needing to locate which
         tetrahedron each point lies in. Finer meshes may need to use fewer sample points.
         :param mode: The mode to plot (0 -> lowest k0 mode, 1 -> next highest k0 mode, and so on).
-        :param num_x_points: The number of x points to compute the fields for.
-        :param num_y_points: The number of y points to compute the fields for.
-        :param num_z_points: The number of z points to compute the fields for.
+        :param num_axis1_points: The number of points to compute the fields for along the first axis in the plane.
+        :param num_axis2_points: The number of y points to compute the fields for along the second axis in the plane.
         :param plane: One of {"xy", "xz", "yz"} to select which plane to take a cut of.
         :param offset: The offset from the edge of the geometry in the direction perpendicular to the plane to calc at.
         :return: The figure containing all the field data (the result of running plt.figure()).
@@ -150,12 +149,10 @@ class Cavity:
         print("Calculating field data")
         # Compute the bounds of the waveguide
         # Create a cuboid grid of points that the geometry is inscribed in
-        offset_x = offset if plane.upper() == "YZ" else 0
-        offset_y = offset if plane.upper() == "XZ" else 0
-        offset_z = offset if plane.upper() == "XY" else 0
-        x_points = np.linspace(self.x_min+offset_x, self.x_max, num_x_points)
-        y_points = np.linspace(self.y_min+offset_y, self.y_max, num_y_points)
-        z_points = np.linspace(self.z_min+offset_z, self.z_max, num_z_points)
+        x_points = [self.x_min+offset] if plane.upper() == "YZ" else np.linspace(self.x_min, self.x_max, num_axis1_points)
+        y_points = [self.y_min+offset] if plane.upper() == "XZ" else np.linspace(self.y_min, self.y_max, num_axis1_points if plane.upper() == "YZ" else num_axis2_points)
+        z_points = [self.z_min+offset] if plane.upper() == "XY" else np.linspace(self.z_min, self.z_max, num_axis2_points)
+        num_x_points, num_y_points, num_z_points = len(x_points), len(y_points), len(z_points)
         Ex = np.zeros([num_z_points, num_y_points, num_x_points])
         Ey = np.zeros([num_z_points, num_y_points, num_x_points])
         Ez = np.zeros([num_z_points, num_y_points, num_x_points])
@@ -228,33 +225,30 @@ def save_fields(cavity, mode, plane="xy", cuts=20, folder_path="./"):
     :return: Nothing.
     """
     if plane.upper() == "XY":
-        min, max = cavity.z_min, cavity.z_max
-        num_x, num_y, num_z = 100, 100, 1
+        min_val, max_val = cavity.z_min, cavity.z_max
     elif plane.upper() == "XZ":
-        min, max = cavity.y_min, cavity.y_max
-        num_x, num_y, num_z = 100, 1, 100
+        min_val, max_val = cavity.y_min, cavity.y_max
     elif plane.upper() == "YZ":
-        min, max = cavity.x_min, cavity.x_max
-        num_x, num_y, num_z = 1, 100, 100
+        min_val, max_val = cavity.x_min, cavity.x_max
     else:
         return
 
-    for i, d in enumerate(np.linspace(min, max, cuts)):
-        offset = d - min
-        cavity.plot_fields(mode, num_x, num_y, num_z, plane, offset=offset)
+    for i, d in enumerate(np.linspace(min_val, max_val, cuts)):
+        offset = d - min_val
+        cavity.plot_fields(mode, plane=plane, offset=offset)
         plt.savefig(f"{folder_path}/mode{mode}_plane{plane}_{floor(i / 10)}{i % 10}.png")
         plt.close()
 
 
-# cavity = Cavity("rectangular_waveguide_3d_less_coarse_pec.inp")
-cavity = Cavity("rectangular_waveguide_3d_even_less_coarse.inp")
+cavity = Cavity("rectangular_waveguide_3d_less_coarse_pec.inp")
+# cavity = Cavity("rectangular_waveguide_3d_even_less_coarse.inp")
 cavity.solve()
 mode = 4
 plane = "xz"
 # cavity.plot_fields(mode)
-save_fields(cavity, 7, "xy", 20, "images/fine_mesh/xy")
-save_fields(cavity, 7, "xz", 20, "images/fine_mesh/xz")
-save_fields(cavity, 7, "yz", 20, "images/fine_mesh/yz")
+save_fields(cavity, 7, "xy", 5, "images/coarse_mesh/xy")
+# save_fields(cavity, 7, "xz", 20, "images/coarse_mesh/xz")
+# save_fields(cavity, 7, "yz", 20, "images/coarse_mesh/yz")
 # save_fields(cavity, 5, "xy", 20, "images/coarse_mesh/xy")
 # save_fields(cavity, 5, "xz", 20, "images/coarse_mesh/xz")
 # save_fields(cavity, 5, "yz", 20, "images/coarse_mesh/yz")
