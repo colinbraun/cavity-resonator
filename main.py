@@ -120,7 +120,7 @@ class Cavity:
         start_time = time.time()
         sS = sparse.csr_matrix(S)
         sT = sparse.csr_matrix(T)
-        eigenvalues, eigenvectors = eigs(sS, k=100, M=sT, which='SR')
+        eigenvalues, eigenvectors = eigs(sS, k=50, M=sT, which='SR')
         # eigenvalues, eigenvectors = eig(S, T, right=True)
         # Take the transpose such that each row of the matrix now corresponds to an eigenvector (helpful for sorting)
         eigenvectors = eigenvectors.transpose()
@@ -252,5 +252,13 @@ cavity.solve()
 mode = 4
 plane = "xz"
 # cavity.plot_fields(mode)
-save_fields(cavity, 5, "xy", 20, "images/fine_mesh/xy")
-save_fields(cavity, 5, "xz", 20, "images/fine_mesh/xz")
+save_fields(cavity, 7, "xy", 20, "images/fine_mesh/xy")
+save_fields(cavity, 7, "xz", 20, "images/fine_mesh/xz")
+save_fields(cavity, 7, "yz", 20, "images/fine_mesh/yz")
+# save_fields(cavity, 5, "xy", 20, "images/coarse_mesh/xy")
+# save_fields(cavity, 5, "xz", 20, "images/coarse_mesh/xz")
+# save_fields(cavity, 5, "yz", 20, "images/coarse_mesh/yz")
+
+# Modes 4 and 5 are TE111/TM111 (not sure which is which)
+# Mode 6 is TM210 mode
+# Mode 7 is TE
