@@ -2,7 +2,7 @@ from util import load_mesh, Edge, quad_eval, quad_sample_points, where
 import numpy as np
 from scipy.linalg import inv
 import matplotlib.pyplot as plt
-from math import floor, e
+from math import floor, e, pi, sqrt
 from scipy.linalg import eig
 from scipy import sparse
 from scipy.sparse.linalg import eigs
@@ -174,15 +174,25 @@ class Cavity:
 
         # Compute the field at each of the points
         for i, tet_index in enumerate(tet_indices):
-            tet = self.tetrahedrons[tet_index]
-            phis = [self.eigenvectors[first_mode+mode, self.remap_edge_nums[edge]] if edge in self.remap_edge_nums else 0 for edge in tet.edges]
             z_i = floor(i / (num_x_points * num_y_points)) % num_z_points
             y_i = floor(i / num_x_points) % num_y_points
             x_i = i % num_x_points
+            if tet_index == -1:
+                Ex[z_i, y_i, x_i], Ey[z_i, y_i, x_i], Ez[z_i, y_i, x_i] = 0, 0, 0
+                continue
+            tet = self.tetrahedrons[tet_index]
+            phis = [self.eigenvectors[first_mode+mode, self.remap_edge_nums[edge]] if edge in self.remap_edge_nums else 0 for edge in tet.edges]
+            print(field_points[i])
+            print(self.all_nodes[tet.nodes])
+            print()
+            print(phis)
             # Note the indexing here is done with z_i first, y_i second, and x_i third. If we consider a 2D grid being
             # indexed, the first index corresponds to the row (vertical control), hence y_i second and x_i third.
             # Same idea applies to having z_i first.
-            Ex[z_i, y_i, x_i], Ey[z_i, y_i, x_i], Ez[z_i, y_i, x_i] = tet.interpolate(phis, field_points[i])
+            # Ex[z_i, y_i, x_i], Ey[z_i, y_i, x_i], Ez[z_i, y_i, x_i] = tet.interpolate(phis, field_points[i])
+            ex, ey, ez = tet.interpolate(phis, field_points[i])
+            print(ex, ey, ez)
+            Ex[z_i, y_i, x_i], Ey[z_i, y_i, x_i], Ez[z_i, y_i, x_i] = ex, ey, ez
 
         print("Finished calculating field data")
 
@@ -238,15 +248,47 @@ def save_fields(cavity, mode, plane="xy", cuts=20, folder_path="./"):
         cavity.plot_fields(mode, plane=plane, offset=offset)
         plt.savefig(f"{folder_path}/mode{mode}_plane{plane}_{floor(i / 10)}{i % 10}.png")
         plt.close()
+        # if i == round(cuts / 2):
+        #     break
+
+
+def plot_analytical_fields(m, n, p, a=1., b=0.5, c=0.75, te=True):
+    num_x_points = 100
+    num_y_points = 100
+    num_z_points = 10
+    x_points = np.linspace(0, a, num_x_points)
+    y_points = np.linspace(0, b, num_y_points)
+    z_points = np.linspace(0, c, num_z_points)
+    x, y, z = np.meshgrid(x_points, y_points, z_points)
+    # Ex = np.zeros([num_z_points, num_y_points, num_x_points])
+    # Ey = np.zeros([num_z_points, num_y_points, num_x_points])
+    # Ez = np.zeros([num_z_points, num_y_points, num_x_points])
+    plt.figure()
+    if te:
+        # Do TE mode plotting
+        pass
+    else:
+        # Do TM mode plotting
+        k_tmn = sqrt((m*pi/a)**2 + (n*pi/b)**2)
+        Ex = -1 / k_tmn**2 * m*pi/a * p*pi/c * np.cos(m*pi*x/a) * np.sin(n*pi*y/b) * np.sin(p*pi*z/c)
+        Ey = -1 / k_tmn**2 * m*pi/b * p*pi/c * np.sin(m*pi*x/a) * np.cos(n*pi*y/b) * np.sin(p*pi*z/c)
+        Ez = np.sin(m*pi*x/a) * np.sin(n*pi*y/b) * np.cos(p*pi*z/c)
+        plt.imshow(Ez[:, :, 0], extent=[0, a, 0, b], cmap="cividis")
+        plt.colorbar(label="Ez")
+        # skip = (slice(None, None, 5), slice(None, None, 5))
+        # skip = (slice(None, None, 5), slice(None, None, 5), round(num_z_points/2))
+        skip = (slice(None, None, 5), slice(None, None, 5), 7)
+        # x, y = np.meshgrid(x_points, y_points)
+        plt.quiver(x[skip], y[skip], Ex[skip], Ey[skip], color="black")
 
 
 cavity = Cavity("rectangular_waveguide_3d_less_coarse_pec.inp")
 # cavity = Cavity("rectangular_waveguide_3d_even_less_coarse.inp")
 cavity.solve()
-mode = 4
-plane = "xz"
+# plot_analytical_fields(1, 1, 1, te=False)
+# print("Done plotting")
 # cavity.plot_fields(mode)
-save_fields(cavity, 7, "xy", 5, "images/coarse_mesh/xy")
+save_fields(cavity, 4, "xy", 5, "images/coarse_mesh/xy")
 # save_fields(cavity, 7, "xz", 20, "images/coarse_mesh/xz")
 # save_fields(cavity, 7, "yz", 20, "images/coarse_mesh/yz")
 # save_fields(cavity, 5, "xy", 20, "images/coarse_mesh/xy")

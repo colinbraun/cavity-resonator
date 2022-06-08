@@ -211,7 +211,8 @@ tet_indices = where(TriangleElement.all_nodes, tets_node_ids, field_points)
 
 # Compute the field at each of the points
 for i, tet_index in enumerate(tet_indices):
-    phis = [1, 0, 0, 0, 0, 0] if tet_index == 0 else [0, 0, 0, 0, 0, 0]
+    # Have tested all 6 individual edges (phi = 1 for one edge, phi = 0 for all other edges), all look fine
+    phis = [1, 1, 1, 0, 0, 0] if tet_index == 0 else [0, 0, 0, 0, 0, 0]
     ex, ey, ez = tet.interpolate(phis, field_points[i])
     z_i = math.floor(i / (num_x_points * num_y_points)) % num_z_points
     y_i = math.floor(i / num_x_points) % num_y_points
