@@ -252,10 +252,10 @@ def save_fields(cavity, mode, plane="xy", cuts=20, folder_path="./"):
         #     break
 
 
-def plot_analytical_fields(m, n, p, a=1., b=0.5, c=0.75, te=True):
+def plot_analytical_fields(m, n, p, a=1., b=0.5, c=0.75, plane="xy", te=True):
     num_x_points = 100
     num_y_points = 100
-    num_z_points = 10
+    num_z_points = 100
     x_points = np.linspace(0, a, num_x_points)
     y_points = np.linspace(0, b, num_y_points)
     z_points = np.linspace(0, c, num_z_points)
@@ -263,32 +263,45 @@ def plot_analytical_fields(m, n, p, a=1., b=0.5, c=0.75, te=True):
     # Ex = np.zeros([num_z_points, num_y_points, num_x_points])
     # Ey = np.zeros([num_z_points, num_y_points, num_x_points])
     # Ez = np.zeros([num_z_points, num_y_points, num_x_points])
+    k_tmn = sqrt((m * pi / a) ** 2 + (n * pi / b) ** 2)
+    offset = 3
     plt.figure()
     if te:
         # Do TE mode plotting
+        Ex = 1 / k_tmn**2 * n*pi/b * np.cos(m*pi*x/a) * np.sin(n*pi*y/b) * np.sin(p*pi*z/c)
+        Ey = -1 / k_tmn**2 * m*pi/a * np.sin(m*pi*x/a) * np.cos(n*pi*y/b) * np.sin(p*pi*z/c)
+        Ez = 0 * x
         pass
     else:
         # Do TM mode plotting
-        k_tmn = sqrt((m*pi/a)**2 + (n*pi/b)**2)
         Ex = -1 / k_tmn**2 * m*pi/a * p*pi/c * np.cos(m*pi*x/a) * np.sin(n*pi*y/b) * np.sin(p*pi*z/c)
         Ey = -1 / k_tmn**2 * m*pi/b * p*pi/c * np.sin(m*pi*x/a) * np.cos(n*pi*y/b) * np.sin(p*pi*z/c)
         Ez = np.sin(m*pi*x/a) * np.sin(n*pi*y/b) * np.cos(p*pi*z/c)
-        plt.imshow(Ez[:, :, 0], extent=[0, a, 0, b], cmap="cividis")
+    plt.title(f"Fields in {plane.upper()}-plane")
+    if plane.upper() == "YZ":
+        skip = (slice(None, None, 5), offset, slice(None, None, 5))
+        plt.imshow(Ex[:, offset, :], extent=[0, b, 0, c], cmap="cividis")
+        plt.colorbar(label="Ex")
+        plt.quiver(y[skip], z[skip], Ey[skip], Ez[skip], color="black")
+    elif plane.upper() == "XY":
+        skip = (slice(None, None, 5), slice(None, None, 5), offset)
+        plt.imshow(Ez[:, :, offset], extent=[0, a, 0, b], cmap="cividis")
         plt.colorbar(label="Ez")
-        # skip = (slice(None, None, 5), slice(None, None, 5))
-        # skip = (slice(None, None, 5), slice(None, None, 5), round(num_z_points/2))
-        skip = (slice(None, None, 5), slice(None, None, 5), 7)
-        # x, y = np.meshgrid(x_points, y_points)
         plt.quiver(x[skip], y[skip], Ex[skip], Ey[skip], color="black")
+    else:
+        raise RuntimeError(f"Invalid argument for plane '{plane}'. Must be one of 'xy', 'xz', or 'yz'.")
 
 
 cavity = Cavity("rectangular_waveguide_3d_less_coarse_pec.inp")
 # cavity = Cavity("rectangular_waveguide_3d_even_less_coarse.inp")
-cavity.solve()
-# plot_analytical_fields(1, 1, 1, te=False)
+# cavity.solve()
+plot_analytical_fields(1, 0, 2, plane="xy", te=True)
+plt.savefig("images/analytical/te_102_xy.png")
+# exit()
 # print("Done plotting")
 # cavity.plot_fields(mode)
-save_fields(cavity, 4, "xy", 5, "images/coarse_mesh/xy")
+# cavity.plot_fields(4, offset=0.3)
+# save_fields(cavity, 4, "xy", 5, "images/coarse_mesh/xy")
 # save_fields(cavity, 7, "xz", 20, "images/coarse_mesh/xz")
 # save_fields(cavity, 7, "yz", 20, "images/coarse_mesh/yz")
 # save_fields(cavity, 5, "xy", 20, "images/coarse_mesh/xy")

@@ -16,7 +16,7 @@ class Edge:
         node1_t, node2_t = TriangleElement.all_nodes[node1], TriangleElement.all_nodes[node2]
         # TODO: Evaluate whether the sign should be considered or not (currently does assign it a sign)
         sign_multiplier = 1 if node1 < node2 else -1
-        self.length = sign_multiplier * math.sqrt((node2_t[0] - node1_t[0])**2 + (node2_t[1] - node1_t[1])**2)
+        self.length = sign_multiplier * math.sqrt((node2_t[0] - node1_t[0])**2 + (node2_t[1] - node1_t[1])**2 + (node2_t[2] - node1_t[2])**2)
 
     def flip(self):
         """Return a copy of this object with the node numbers switched"""

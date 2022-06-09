@@ -209,6 +209,7 @@ for i in range(num_z_points):
 
 tet_indices = where(TriangleElement.all_nodes, tets_node_ids, field_points)
 
+ax = plt.figure().add_subplot(projection='3d')
 # Compute the field at each of the points
 for i, tet_index in enumerate(tet_indices):
     # Have tested all 6 individual edges (phi = 1 for one edge, phi = 0 for all other edges), all look fine
@@ -220,9 +221,10 @@ for i, tet_index in enumerate(tet_indices):
     # Note the indexing here is done with y_i first and x_i second. If we consider a grid being indexed,
     # the first index corresponds to the row (vertical control), hence y_i first and x_i second
     Ex[y_i, x_i, z_i], Ey[y_i, x_i, z_i], Ez[y_i, x_i, z_i] = tet.interpolate(phis, field_points[i])
+    # if tet_index != -1:
+    #     ax.scatter(field_points[i][0], field_points[i][1], field_points[i][2])
 
 # Try a 3d quiver plot:
-ax = plt.figure().add_subplot(projection='3d')
 for edge in [edge1, edge2, edge3, edge4, edge5, edge6]:
     x_vals = [TriangleElement.all_nodes[edge.node1][0], TriangleElement.all_nodes[edge.node2][0]]
     y_vals = [TriangleElement.all_nodes[edge.node1][1], TriangleElement.all_nodes[edge.node2][1]]
@@ -231,3 +233,4 @@ for edge in [edge1, edge2, edge3, edge4, edge5, edge6]:
 x, y, z = np.meshgrid(x_points, y_points, z_points, indexing='xy')
 ax.quiver(x, y, z, Ex, Ey, Ez, length=0.05, normalize=True)
 # x, y = np.meshgrid(x_points, y_points)
+print("Done")
