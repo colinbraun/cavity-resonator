@@ -121,6 +121,7 @@ class Cavity:
         sS = sparse.csr_matrix(S)
         sT = sparse.csr_matrix(T)
         eigenvalues, eigenvectors = eigs(sS, k=100, M=sT, which='SR')
+        # eigenvalues, eigenvectors = eigs(sS, k=10, M=sT, which='LR', sigma=27, OPpart='r')
         # eigenvalues, eigenvectors = eig(S, T, right=True)
         # Take the transpose such that each row of the matrix now corresponds to an eigenvector (helpful for sorting)
         eigenvectors = eigenvectors.transpose()
@@ -182,16 +183,11 @@ class Cavity:
                 continue
             tet = self.tetrahedrons[tet_index]
             phis = [self.eigenvectors[first_mode+mode, self.remap_edge_nums[edge]] if edge in self.remap_edge_nums else 0 for edge in tet.edges]
-            print(field_points[i])
-            print(self.all_nodes[tet.nodes])
-            print()
-            print(phis)
             # Note the indexing here is done with z_i first, y_i second, and x_i third. If we consider a 2D grid being
             # indexed, the first index corresponds to the row (vertical control), hence y_i second and x_i third.
             # Same idea applies to having z_i first.
             # Ex[z_i, y_i, x_i], Ey[z_i, y_i, x_i], Ez[z_i, y_i, x_i] = tet.interpolate(phis, field_points[i])
             ex, ey, ez = tet.interpolate(phis, field_points[i])
-            print(ex, ey, ez)
             Ex[z_i, y_i, x_i], Ey[z_i, y_i, x_i], Ez[z_i, y_i, x_i] = ex, ey, ez
 
         print("Finished calculating field data")
@@ -294,14 +290,15 @@ def plot_analytical_fields(m, n, p, a=1., b=0.5, c=0.75, plane="xy", te=True):
 
 cavity = Cavity("rectangular_waveguide_3d_less_coarse_pec.inp")
 # cavity = Cavity("rectangular_waveguide_3d_even_less_coarse.inp")
-# cavity.solve()
-plot_analytical_fields(1, 0, 2, plane="xy", te=True)
-plt.savefig("images/analytical/te_102_xy.png")
+# cavity = Cavity("rectangular_waveguide_pec_20220609_fine.inp")
+cavity.solve()
+# plot_analytical_fields(1, 0, 2, plane="xy", te=True)
+# plt.savefig("images/analytical/te_102_xy.png")
 # exit()
 # print("Done plotting")
 # cavity.plot_fields(mode)
 # cavity.plot_fields(4, offset=0.3)
-# save_fields(cavity, 4, "xy", 5, "images/coarse_mesh/xy")
+save_fields(cavity, 4, "xy", 5, "images/fine_mesh/xy")
 # save_fields(cavity, 7, "xz", 20, "images/coarse_mesh/xz")
 # save_fields(cavity, 7, "yz", 20, "images/coarse_mesh/yz")
 # save_fields(cavity, 5, "xy", 20, "images/coarse_mesh/xy")
