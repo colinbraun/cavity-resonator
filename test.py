@@ -173,8 +173,9 @@ edge3 = Edge(0, 3)
 edge4 = Edge(1, 2)
 edge5 = Edge(1, 3)
 edge6 = Edge(2, 3)
+TriangleElement.all_edges_map = {edge1: 0, edge2: 1, edge3: 2, edge4: 3, edge5: 4, edge6: 5}
 TriangleElement.all_edges = np.array([edge1, edge2, edge3, edge4, edge5, edge6])
-tet = TetrahedralElement(edges)
+tet = TetrahedralElement(nodes)
 tets_node_ids = np.array([tet.nodes])
 
 x_min = np.amin(TriangleElement.all_nodes[:, 0])
@@ -184,9 +185,9 @@ y_max = np.amax(TriangleElement.all_nodes[:, 1])
 z_min = np.amin(TriangleElement.all_nodes[:, 2])
 z_max = np.amax(TriangleElement.all_nodes[:, 2])
 # Create a cuboid grid of points that the geometry is inscribed in
-num_x_points = 10
-num_y_points = 10
-num_z_points = 10
+num_x_points = 50
+num_y_points = 50
+num_z_points = 50
 x_points = np.linspace(x_min, x_max, num_x_points)
 y_points = np.linspace(y_min, y_max, num_y_points)
 z_points = np.linspace(z_min, z_max, num_z_points)
@@ -209,18 +210,21 @@ for i in range(num_z_points):
 
 tet_indices = where(TriangleElement.all_nodes, tets_node_ids, field_points)
 
-ax = plt.figure().add_subplot(projection='3d')
+# ax = plt.figure().add_subplot(projection='3d')
 # Compute the field at each of the points
 for i, tet_index in enumerate(tet_indices):
     # Have tested all 6 individual edges (phi = 1 for one edge, phi = 0 for all other edges), all look fine
-    phis = [1, 1, 1, 0, 0, 0] if tet_index == 0 else [0, 0, 0, 0, 0, 0]
-    ex, ey, ez = tet.interpolate(phis, field_points[i])
+    phis = [1, 0, 0, 0, 0, 0]
+    if tet_index == -1:
+        ex, ey, ez = 0, 0, 0
+    else:
+        ex, ey, ez = tet.interpolate(phis, field_points[i])
     z_i = math.floor(i / (num_x_points * num_y_points)) % num_z_points
     y_i = math.floor(i / num_x_points) % num_y_points
     x_i = i % num_x_points
     # Note the indexing here is done with y_i first and x_i second. If we consider a grid being indexed,
     # the first index corresponds to the row (vertical control), hence y_i first and x_i second
-    Ex[y_i, x_i, z_i], Ey[y_i, x_i, z_i], Ez[y_i, x_i, z_i] = tet.interpolate(phis, field_points[i])
+    Ex[y_i, x_i, z_i], Ey[y_i, x_i, z_i], Ez[y_i, x_i, z_i] = ex, ey, ez
     # if tet_index != -1:
     #     ax.scatter(field_points[i][0], field_points[i][1], field_points[i][2])
 
@@ -229,8 +233,9 @@ for edge in [edge1, edge2, edge3, edge4, edge5, edge6]:
     x_vals = [TriangleElement.all_nodes[edge.node1][0], TriangleElement.all_nodes[edge.node2][0]]
     y_vals = [TriangleElement.all_nodes[edge.node1][1], TriangleElement.all_nodes[edge.node2][1]]
     z_vals = [TriangleElement.all_nodes[edge.node1][2], TriangleElement.all_nodes[edge.node2][2]]
-    ax.plot3D(x_vals, y_vals, z_vals)
+    # ax.plot3D(x_vals, y_vals, z_vals)
 x, y, z = np.meshgrid(x_points, y_points, z_points, indexing='xy')
-ax.quiver(x, y, z, Ex, Ey, Ez, length=0.05, normalize=True)
+# ax.quiver(x, y, z, Ex, Ey, Ez, length=0.05, normalize=True)
+# ax.quiver(x, y, z, Ex, Ey, Ez)
 # x, y = np.meshgrid(x_points, y_points)
 print("Done")

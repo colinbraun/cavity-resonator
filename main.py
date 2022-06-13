@@ -182,7 +182,13 @@ class Cavity:
                 Ex[z_i, y_i, x_i], Ey[z_i, y_i, x_i], Ez[z_i, y_i, x_i] = 0, 0, 0
                 continue
             tet = self.tetrahedrons[tet_index]
-            phis = [self.eigenvectors[first_mode+mode, self.remap_edge_nums[edge]] if edge in self.remap_edge_nums else 0 for edge in tet.edges]
+            # phis = [self.eigenvectors[first_mode+mode, self.remap_edge_nums[edge]] if edge in self.remap_edge_nums else 0 for edge in tet.edges]
+            phis = []
+            for edge in tet.edges:
+                if edge in self.remap_edge_nums:
+                    phis.append(self.eigenvectors[first_mode+mode, self.remap_edge_nums[edge]])
+                else:
+                    phis.append(0)
             # Note the indexing here is done with z_i first, y_i second, and x_i third. If we consider a 2D grid being
             # indexed, the first index corresponds to the row (vertical control), hence y_i second and x_i third.
             # Same idea applies to having z_i first.
@@ -298,7 +304,7 @@ cavity.solve()
 # print("Done plotting")
 # cavity.plot_fields(mode)
 # cavity.plot_fields(4, offset=0.3)
-save_fields(cavity, 4, "xy", 5, "images/fine_mesh/xy")
+save_fields(cavity, 7, "xy", 5, "images/coarse_mesh/xy")
 # save_fields(cavity, 7, "xz", 20, "images/coarse_mesh/xz")
 # save_fields(cavity, 7, "yz", 20, "images/coarse_mesh/yz")
 # save_fields(cavity, 5, "xy", 20, "images/coarse_mesh/xy")
@@ -307,4 +313,4 @@ save_fields(cavity, 4, "xy", 5, "images/fine_mesh/xy")
 
 # Modes 4 and 5 are TE111/TM111 (not sure which is which)
 # Mode 6 is TM210 mode
-# Mode 7 is TE
+# Mode 7 is TE102

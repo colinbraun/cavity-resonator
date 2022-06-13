@@ -47,6 +47,7 @@ class TriangleElement:
     """A class representing a triangular element (containing 3 global node numbers and 3 global edge numbers, as well as a permittivity) """
     all_nodes = []
     all_edges = []
+    all_edges_map = None
 
     def __init__(self, nodes, edges, permittivity=1):
         """
@@ -172,16 +173,24 @@ class TriangleElement:
 class TetrahedralElement:
     """Class representing a tetrahedral (3D) element consisting of 4 TriangularElement objects"""
 
-    def __init__(self, edges, permittivity=1):
+    def __init__(self, nodes, permittivity=1):
         """
 
         :param edges: A numpy array containing the 6 edges (as global edge numbers) of the tetrahedral element
         :param permittivity: The permittivity of this element
         """
-        self.edges = edges
+        self.nodes = nodes
+        # Generate the edges:
+        edge1 = TriangleElement.all_edges_map[Edge(nodes[0], nodes[1])]
+        edge2 = TriangleElement.all_edges_map[Edge(nodes[0], nodes[2])]
+        edge3 = TriangleElement.all_edges_map[Edge(nodes[0], nodes[3])]
+        edge4 = TriangleElement.all_edges_map[Edge(nodes[1], nodes[2])]
+        edge5 = TriangleElement.all_edges_map[Edge(nodes[1], nodes[3])]
+        edge6 = TriangleElement.all_edges_map[Edge(nodes[2], nodes[3])]
+        self.edges = np.array([edge1, edge2, edge3, edge4, edge5, edge6])
         self.permittivity = permittivity
         # Store the unique set of points that make up this tetrahedron in no particular order
-        self.nodes = np.unique(np.array([edge.node1 for edge in [TriangleElement.all_edges[i] for i in edges]] + [edge.node2 for edge in [TriangleElement.all_edges[i] for i in edges]], dtype=np.int32))
+        # self.nodes = np.unique(np.array([edge.node1 for edge in [TriangleElement.all_edges[i] for i in edges]] + [edge.node2 for edge in [TriangleElement.all_edges[i] for i in edges]], dtype=np.int32))
         # Old tested method of getting the points for this tetrahedron
         # self.points = TriangleElement.all_nodes[np.unique([edge.node1 for edge in [TriangleElement.all_edges[i] for i in edges]] + [edge.node2 for edge in [TriangleElement.all_edges[i] for i in edges]])]
         self.points = TriangleElement.all_nodes[self.nodes]
@@ -191,7 +200,23 @@ class TetrahedralElement:
                [1, self.points[2][0], self.points[2][1], self.points[2][2]],
                [1, self.points[3][0], self.points[3][1], self.points[3][2]]]
         # This could be a method, but is frequently and always used.
-        self.volume = abs(np.linalg.det(mat) / 6)
+        self.volume = np.linalg.det(mat)
+        if self.volume < 0:
+            print("This happened")
+            self.volume = abs(self.volume)
+            temp_node, temp_point = np.copy(self.nodes[0]), np.copy(self.points[0])
+            # temp_node2, temp_point2 = np.copy(self.nodes[1]), np.copy(self.points[1])
+            self.nodes[0], self.points[0] = self.nodes[3], self.points[3]
+            self.nodes[3], self.points[3] = temp_node, temp_point
+            # self.nodes[1], self.points[1] = self.nodes[2], self.points[2]
+            # self.nodes[2], self.points[2] = temp_node2, temp_point2
+            test_mat = [[1, self.points[0][0], self.points[0][1], self.points[0][2]],
+                   [1, self.points[1][0], self.points[1][1], self.points[1][2]],
+                   [1, self.points[2][0], self.points[2][1], self.points[2][2]],
+                   [1, self.points[3][0], self.points[3][1], self.points[3][2]]]
+            if np.linalg.det(test_mat) < 0:
+                raise RuntimeError("Volume should be positive but was negative")
+
         # Compute the simplex (barycentric) constants for the nodes of this TetrahedralElement
         # Each row is for a node. Each column is for a, b, c, and d (in order) from NASA paper eq. 162
         # These are stored in the same order as self.nodes (i.e. simplex_consts[0] are the constants for self.nodes[0])
@@ -208,19 +233,22 @@ class TetrahedralElement:
                     negate = -1
                 cofactors[col] = negate * np.linalg.det(np.delete(np.delete(np.append(np.ones([4, 1]), self.points, 1), row, axis=0), col, axis=1))
             all_cofactors[row] = cofactors
-        self.simplex_consts = all_cofactors
+        self.simplex_consts = all_cofactors * 6
 
     def interpolate(self, phis, p):
         """
         Get the fields at point p using the given phi values for each edge. The phi values must be passed in the same
         order as the edges field of this object.
-        :param phis: An iterable containing the 6 phi values, one for each edge.
+        :param phis: An iterable containing the 6 phi values (the edge coefficients), one for each edge.
         :param p: The point to compute the Ex, Ey, and Ez fields at
         :return: The Ex, Ey, and Ez fields.
         """
         x_component = 0
         y_component = 0
         z_component = 0
+        if not self.point_inside(p):
+            # raise RuntimeError("Point was not inside tetrahedron")
+            print("Point was not inside tet")
         for i, edge_no in enumerate(self.edges):
             edge = TriangleElement.all_edges[edge_no]
             indices_l = [np.argwhere(self.nodes == edge.node1)[0][0], np.argwhere(self.nodes == edge.node2)[0][0]]
@@ -229,7 +257,7 @@ class TetrahedralElement:
             a_il, a_jl = self.simplex_consts[indices_l]
             Axl = a_il[0]*a_jl[1] - a_il[1]*a_jl[0]
             Bxl = a_il[2]*a_jl[1] - a_il[1]*a_jl[2]
-            Cxl = a_il[3] * a_jl[1] - a_il[1] * a_jl[3]
+            Cxl = a_il[3]*a_jl[1] - a_il[1]*a_jl[3]
             Ayl = a_il[0]*a_jl[2] - a_il[2]*a_jl[0]
             Byl = a_il[1]*a_jl[2] - a_il[2]*a_jl[1]
             Cyl = a_il[3]*a_jl[2] - a_il[2]*a_jl[3]
@@ -240,6 +268,31 @@ class TetrahedralElement:
             y_component += phis[i] * edge.length / 36 / self.volume**2 * (Ayl + Byl*p[0] + Cyl*p[2])
             z_component += phis[i] * edge.length / 36 / self.volume**2 * (Azl + Bzl*p[0] + Czl*p[1])
         return x_component, y_component, z_component
+
+    def point_inside(self, point):
+        """
+        Determine if the given point lies in this tetrahedron (expensive).
+        :param point: The point to check against.
+        :return: True if the point lies in the tetrahedron, false otherwise
+        """
+        m0 = np.array([[self.points[0][0], self.points[0][1], self.points[0][2], 1],
+               [self.points[1][0], self.points[1][1], self.points[1][2], 1],
+               [self.points[2][0], self.points[2][1], self.points[2][2], 1],
+               [self.points[3][0], self.points[3][1], self.points[3][2], 1]])
+        m1 = np.copy(m0)
+        m2 = np.copy(m0)
+        m3 = np.copy(m0)
+        m4 = np.copy(m0)
+        m1[0, 0:3] = point
+        m2[1, 0:3] = point
+        m3[2, 0:3] = point
+        m4[3, 0:3] = point
+        d0, d1, d2, d3, d4 = np.linalg.det(m0), np.linalg.det(m1), np.linalg.det(m2), np.linalg.det(m3), np.linalg.det(m4)
+        total = int(d0 > 0) + int(d1 > 0) + int(d2 > 0) + int(d3 > 0) + int(d4 > 0)
+        if total == 5 or total == 0:
+            return True
+        else:
+            return False
 
 
 def construct_triangles_from_surface(element_to_node_conn, all_edges_map):
@@ -332,6 +385,7 @@ def load_mesh(filename, tet_name="Tetrahedrons", pec_walls_name="PECWalls"):
     TriangleElement.all_edges = all_edges
     # A temporary map from an edge object to its global edge number (MUCH lower computational complexity)
     all_edges_map = {}
+    TriangleElement.all_edges_map = all_edges_map
     # Keep track of what edge number we are on
     edge_count = 0
 
@@ -369,7 +423,7 @@ def load_mesh(filename, tet_name="Tetrahedrons", pec_walls_name="PECWalls"):
             # triangle = TriangleElement(np.array(element), np.array((edge1_number, edge2_number, edge3_number)), 1)
             # triangle_elements.append(triangle)
         # Create the tetrahedron object, converting the global edge numbers set to a numpy array
-        tetrahedrons.append(TetrahedralElement(np.array(np.array(list(tet_edges)))))
+        tetrahedrons.append(TetrahedralElement(tet))
 
     # Convert tetrahedrons to numpy array
     all_tets = np.array(tetrahedrons)
@@ -381,7 +435,7 @@ def load_mesh(filename, tet_name="Tetrahedrons", pec_walls_name="PECWalls"):
     # Load the PEC Wall triangle elements
     boundary_pec_elements = load_mesh_block(filename, pec_walls_name)
     # boundary_pec_edges = [Edge(element[0], element[1]) for element in boundary_pec_elements]
-    boundary_pec_triangles, boundary_pec_edges = construct_triangles_from_surface(boundary_pec_elements, all_edges_map)
+    _, boundary_pec_edges = construct_triangles_from_surface(boundary_pec_elements, all_edges_map)
     boundary_pec_edge_numbers = set(all_edges_map[edge] for edge in boundary_pec_edges)
     # Load the InputPort triangle elements
 
