@@ -120,8 +120,9 @@ class Cavity:
         start_time = time.time()
         sS = sparse.csr_matrix(S)
         sT = sparse.csr_matrix(T)
-        eigenvalues, eigenvectors = eigs(sS, k=100, M=sT, which='SR')
-        # eigenvalues, eigenvectors = eigs(sS, k=10, M=sT, which='LR', sigma=27, OPpart='r')
+        # eigenvalues, eigenvectors = eigs(sS, k=100, M=sT, which='SR')
+        # sigma of 27 seems to be fine?
+        eigenvalues, eigenvectors = eigs(sS, k=10, M=sT, which='LR', sigma=1, OPpart='r')
         # eigenvalues, eigenvectors = eig(S, T, right=True)
         # Take the transpose such that each row of the matrix now corresponds to an eigenvector (helpful for sorting)
         eigenvectors = eigenvectors.transpose()
@@ -206,21 +207,21 @@ class Cavity:
             field_skip = (slice(None, None, 5), slice(None, None, 5), 0)
             plt.imshow(Ex[:, :, 0], extent=[self.y_min, self.y_max, self.z_min, self.z_max], cmap="cividis")
             plt.colorbar(label="Ex")
-            plt.quiver(axis1[skip], axis2[skip], Ey[field_skip], Ez[field_skip], color="black")
+            # plt.quiver(axis1[skip], axis2[skip], Ey[field_skip], Ez[field_skip], color="black")
         elif plane.upper() == "XZ":
             axis1, axis2 = np.meshgrid(x_points, z_points)
             skip = (slice(None, None, 5), slice(None, None, 5))
             field_skip = (slice(None, None, 5), 0, slice(None, None, 5))
             plt.imshow(Ey[:, 0, :], extent=[self.x_min, self.x_max, self.z_min, self.z_max], cmap="cividis")
             plt.colorbar(label="Ey")
-            plt.quiver(axis1[skip], axis2[skip], Ex[field_skip], Ez[field_skip], color="black")
+            # plt.quiver(axis1[skip], axis2[skip], Ex[field_skip], Ez[field_skip], color="black")
         elif plane.upper() == "XY":
             axis1, axis2 = np.meshgrid(x_points, y_points)
             skip = (slice(None, None, 5), slice(None, None, 5))
             field_skip = (0, slice(None, None, 5), slice(None, None, 5))
             plt.imshow(Ez[0, :, :], extent=[self.x_min, self.x_max, self.y_min, self.y_max], cmap="cividis")
             plt.colorbar(label="Ez")
-            plt.quiver(axis1[skip], axis2[skip], Ex[field_skip], Ey[field_skip], color="black")
+            # plt.quiver(axis1[skip], axis2[skip], Ex[field_skip], Ey[field_skip], color="black")
         else:
             raise RuntimeError(f"Invalid argument for plane '{plane}'. Must be one of 'xy', 'xz', or 'yz'.")
         return fig
@@ -245,10 +246,15 @@ def save_fields(cavity, mode, plane="xy", cuts=20, folder_path="./"):
     else:
         return
 
-    for i, d in enumerate(np.linspace(min_val, max_val, cuts)):
-        offset = d - min_val
-        cavity.plot_fields(mode, plane=plane, offset=offset)
-        plt.savefig(f"{folder_path}/mode{mode}_plane{plane}_{floor(i / 10)}{i % 10}.png")
+    if cuts > 1:
+        for i, d in enumerate(np.linspace(min_val, max_val, cuts)):
+            offset = d - min_val
+            cavity.plot_fields(mode, plane=plane, offset=offset)
+            plt.savefig(f"{folder_path}/mode{mode}_plane{plane}_{floor(i / 10)}{i % 10}.png")
+            plt.close()
+    else:
+        cavity.plot_fields(mode, plane=plane, offset=(max_val-min_val)/2)
+        plt.savefig(f"{folder_path}/eigenmode_{mode+1}_plane{plane}_center.png")
         plt.close()
         # if i == round(cuts / 2):
         #     break
@@ -294,17 +300,21 @@ def plot_analytical_fields(m, n, p, a=1., b=0.5, c=0.75, plane="xy", te=True):
         raise RuntimeError(f"Invalid argument for plane '{plane}'. Must be one of 'xy', 'xz', or 'yz'.")
 
 
-cavity = Cavity("rectangular_waveguide_3d_less_coarse_pec.inp")
+# cavity = Cavity("rectangular_waveguide_3d_less_coarse_pec.inp")
 # cavity = Cavity("rectangular_waveguide_3d_even_less_coarse.inp")
-# cavity = Cavity("rectangular_waveguide_pec_20220609_fine.inp")
+cavity = Cavity("rectangular_waveguide_pec_20220609_fine.inp")
 cavity.solve()
+for mode in range(10):
+    save_fields(cavity, mode, "xy", 1, "images")
+    save_fields(cavity, mode, "xz", 1, "images")
+    save_fields(cavity, mode, "yz", 1, "images")
 # plot_analytical_fields(1, 0, 2, plane="xy", te=True)
 # plt.savefig("images/analytical/te_102_xy.png")
 # exit()
 # print("Done plotting")
 # cavity.plot_fields(mode)
 # cavity.plot_fields(4, offset=0.3)
-save_fields(cavity, 7, "xy", 5, "images/coarse_mesh/xy")
+# save_fields(cavity, 7, "xy", 5, "images/coarse_mesh/xy")
 # save_fields(cavity, 7, "xz", 20, "images/coarse_mesh/xz")
 # save_fields(cavity, 7, "yz", 20, "images/coarse_mesh/yz")
 # save_fields(cavity, 5, "xy", 20, "images/coarse_mesh/xy")

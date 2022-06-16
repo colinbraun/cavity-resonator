@@ -133,19 +133,21 @@ class TriangleElement:
             # n2_index = self.nodes.index(node2)
             # print(str(n1_index[0][0]) + str(n2_index[0][0]))
             negate = 1
-            match str(n1_index) + str(n2_index):
-                case "01":
-                    n3_index = 2
-                case "02":
-                    n1_index, n2_index, n3_index, negate = 2, 0, 1, -1
-                case "10":
-                    n1_index, n2_index, n3_index, negate = 0, 1, 2, -1
-                case "12":
-                    n1_index, n2_index, n3_index = 1, 2, 0
-                case "20":
-                    n1_index, n2_index, n3_index = 2, 0, 1
-                case "21":
-                    n1_index, n2_index, n3_index, negate = 1, 2, 0, -1
+            # TODO: Change this logic to work for earlier versions of python. Commented out since not used right now.
+            n1_index, n2_index, n3_index, negate = 0, 1, 2, 1
+            # match str(n1_index) + str(n2_index):
+            #     case "01":
+            #         n3_index = 2
+            #     case "02":
+            #         n1_index, n2_index, n3_index, negate = 2, 0, 1, -1
+            #     case "10":
+            #         n1_index, n2_index, n3_index, negate = 0, 1, 2, -1
+            #     case "12":
+            #         n1_index, n2_index, n3_index = 1, 2, 0
+            #     case "20":
+            #         n1_index, n2_index, n3_index = 2, 0, 1
+            #     case "21":
+            #         n1_index, n2_index, n3_index, negate = 1, 2, 0, -1
 
             # Create the ccw node list started from the first node of the edge
             nodes_lk = (TriangleElement.all_nodes[self.nodes[n1_index]], TriangleElement.all_nodes[self.nodes[n2_index]], TriangleElement.all_nodes[self.nodes[n3_index]])
@@ -246,9 +248,9 @@ class TetrahedralElement:
         x_component = 0
         y_component = 0
         z_component = 0
-        if not self.point_inside(p):
-            # raise RuntimeError("Point was not inside tetrahedron")
-            print("Point was not inside tet")
+        # if not self.point_inside(p):
+        #     # raise RuntimeError("Point was not inside tetrahedron")
+        #     print("Point was not inside tet")
         for i, edge_no in enumerate(self.edges):
             edge = TriangleElement.all_edges[edge_no]
             indices_l = [np.argwhere(self.nodes == edge.node1)[0][0], np.argwhere(self.nodes == edge.node2)[0][0]]
