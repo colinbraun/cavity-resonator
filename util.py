@@ -177,9 +177,10 @@ class TetrahedralElement:
 
     def __init__(self, nodes, permittivity=1):
         """
-
-        :param edges: A numpy array containing the 6 edges (as global edge numbers) of the tetrahedral element
-        :param permittivity: The permittivity of this element
+        Constructor.
+        :param nodes: A numpy array containing the 4 nodes (as global node numbers) of the tetrahedral element. The
+        nodes must ordered such that the calculated volume is positive (Cubit orders the nodes this way automatically).
+        :param permittivity: The permittivity of this element.
         """
         self.nodes = nodes
         # Generate the edges:
@@ -191,33 +192,17 @@ class TetrahedralElement:
         edge6 = TriangleElement.all_edges_map[Edge(nodes[2], nodes[3])]
         self.edges = np.array([edge1, edge2, edge3, edge4, edge5, edge6])
         self.permittivity = permittivity
-        # Store the unique set of points that make up this tetrahedron in no particular order
-        # self.nodes = np.unique(np.array([edge.node1 for edge in [TriangleElement.all_edges[i] for i in edges]] + [edge.node2 for edge in [TriangleElement.all_edges[i] for i in edges]], dtype=np.int32))
-        # Old tested method of getting the points for this tetrahedron
-        # self.points = TriangleElement.all_nodes[np.unique([edge.node1 for edge in [TriangleElement.all_edges[i] for i in edges]] + [edge.node2 for edge in [TriangleElement.all_edges[i] for i in edges]])]
+        # Store the unique set of points that make up this tetrahedron
         self.points = TriangleElement.all_nodes[self.nodes]
         # Volume calculated using eq (157) in NASA paper
         mat = [[1, self.points[0][0], self.points[0][1], self.points[0][2]],
                [1, self.points[1][0], self.points[1][1], self.points[1][2]],
                [1, self.points[2][0], self.points[2][1], self.points[2][2]],
                [1, self.points[3][0], self.points[3][1], self.points[3][2]]]
-        # This could be a method, but is frequently and always used.
+        # This could be a method, but is frequently used.
         self.volume = np.linalg.det(mat)
         if self.volume < 0:
-            print("This happened")
-            self.volume = abs(self.volume)
-            temp_node, temp_point = np.copy(self.nodes[0]), np.copy(self.points[0])
-            # temp_node2, temp_point2 = np.copy(self.nodes[1]), np.copy(self.points[1])
-            self.nodes[0], self.points[0] = self.nodes[3], self.points[3]
-            self.nodes[3], self.points[3] = temp_node, temp_point
-            # self.nodes[1], self.points[1] = self.nodes[2], self.points[2]
-            # self.nodes[2], self.points[2] = temp_node2, temp_point2
-            test_mat = [[1, self.points[0][0], self.points[0][1], self.points[0][2]],
-                   [1, self.points[1][0], self.points[1][1], self.points[1][2]],
-                   [1, self.points[2][0], self.points[2][1], self.points[2][2]],
-                   [1, self.points[3][0], self.points[3][1], self.points[3][2]]]
-            if np.linalg.det(test_mat) < 0:
-                raise RuntimeError("Volume should be positive but was negative")
+            raise RuntimeError("Computed volume was negative but should have been positive")
 
         # Compute the simplex (barycentric) constants for the nodes of this TetrahedralElement
         # Each row is for a node. Each column is for a, b, c, and d (in order) from NASA paper eq. 162
