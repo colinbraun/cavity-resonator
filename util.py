@@ -200,7 +200,7 @@ class TetrahedralElement:
                [1, self.points[2][0], self.points[2][1], self.points[2][2]],
                [1, self.points[3][0], self.points[3][1], self.points[3][2]]]
         # This could be a method, but is frequently used.
-        self.volume = np.linalg.det(mat)
+        self.volume = np.linalg.det(mat) / 6
         if self.volume < 0:
             raise RuntimeError("Computed volume was negative but should have been positive")
 
@@ -220,7 +220,7 @@ class TetrahedralElement:
                     negate = -1
                 cofactors[col] = negate * np.linalg.det(np.delete(np.delete(np.append(np.ones([4, 1]), self.points, 1), row, axis=0), col, axis=1))
             all_cofactors[row] = cofactors
-        self.simplex_consts = all_cofactors * 6
+        self.simplex_consts = all_cofactors
 
     def interpolate(self, phis, p):
         """
